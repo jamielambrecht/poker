@@ -28,16 +28,25 @@ class Hand(owner: String?) {
         this.cards += cards
     }
 
-    fun returnCards(indices : IntArray) : List<Card> {
-        var cards: MutableList<Card> = mutableListOf<Card>()
-        for (i in indices) {
-            cards.add(this.cards.removeAt(i))
+    fun addCardsAtBoolIndices(cards: List<Card>, boolIndices: BooleanArray) {
+        val indices = mutableListOf<Int>()
+        for ((i, bool) in boolIndices.withIndex()) {
+            if (bool) {
+                indices.add(i)
+            }
         }
-        return cards.toList()
+        for (card in cards) {
+            this.cards.add(indices.removeFirst(), card)
+        }
     }
 
-    fun returnCard(index: Int): Card {
-        return cards.removeAt(index)
+    fun returnCards(cards : MutableList<Card>) : MutableList<Card> {
+        val toDeck = mutableListOf<Card>()
+        for (card in cards) {
+            this.cards.remove(card)
+            toDeck.add(card)
+        }
+        return toDeck
     }
 
     fun returnAllCards() : List<Card> {
@@ -61,6 +70,7 @@ class Hand(owner: String?) {
     NOTE: Straights start at Ace (??)
     */
     fun setHandRanks() {
+        val cards = this.cards
         cards.sortBy { it.rank }
         var howManyByRank = IntArray(14)
         var rankAtMatchLevel = IntArray(4)
@@ -115,16 +125,16 @@ class Hand(owner: String?) {
                 handRank == HandRanks.Flush
             }
         }
-
-        if (handRank == HandRanks.StraightFlush && cards.first().rank == 9) {
-            handRank = HandRanks.RoyalFlush
-        }
-
         if (handRank == HandRanks.ThreeOfAKind && pairs > 0) {
             handRank = HandRanks.FullHouse
         }
         if (howManyByRank.maxOf {it.toInt()} == 4) { handRank = HandRanks.FourOfAKind }
 
+        if (handRank == HandRanks.StraightFlush && cards.first().rank == 9) {
+            handRank = HandRanks.RoyalFlush
+        }
+
+        //  Set tie-breakers
         if (handRank == HandRanks.HighestCard)  { tieBreakers[0] = rankAtMatchLevel[0] }
         if (handRank == HandRanks.Pair)         { tieBreakers[0] = rankAtMatchLevel[1]; tieBreakers[1] = rankAtMatchLevel[0] }
         if (handRank == HandRanks.TwoPair)      { tieBreakers[0] = rankAtMatchLevel[1]; tieBreakers[1] = firstPairRank }
@@ -161,5 +171,9 @@ class Hand(owner: String?) {
 
     fun getTieBreaker(): Int {
         return tieBreakers[1]
+    }
+
+    fun getCards(): MutableList<Card> {
+        return cards
     }
 }

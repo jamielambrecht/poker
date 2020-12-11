@@ -1,6 +1,6 @@
 package com.team5.android.poker
 
-class Deck() {
+class Deck {
 
     private val cards: MutableList<Card> = mutableListOf<Card>()
 

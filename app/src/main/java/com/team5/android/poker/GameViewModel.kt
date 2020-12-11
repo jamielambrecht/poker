@@ -8,4 +8,5 @@ class GameViewModel : ViewModel() {
     val player = Player("Player")
     val dealer = Player("Dealer")
     //var winner: Player?
+    val cardSelected = BooleanArray(5)
 }

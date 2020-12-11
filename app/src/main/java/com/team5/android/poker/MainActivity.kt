@@ -1,9 +1,15 @@
 package com.team5.android.poker
 
 import android.os.Bundle
+import android.util.Log
+import android.view.View
+import android.widget.Button
 import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.lifecycle.ViewModelProvider
+
+private const val TAG = "MainActivity"
 
 class MainActivity : AppCompatActivity() {
 
@@ -11,39 +17,83 @@ class MainActivity : AppCompatActivity() {
         ViewModelProvider(this).get(GameViewModel::class.java)
     }
 
-    private lateinit var playerCard1 : ImageView
-    private lateinit var playerCard2 : ImageView
-    private lateinit var playerCard3 : ImageView
-    private lateinit var playerCard4 : ImageView
-    private lateinit var playerCard5 : ImageView
+    private lateinit var playerCardImageViews : MutableList<ImageView>
+    private lateinit var playerCardParams : ConstraintLayout.LayoutParams
+    private lateinit var dealButton: Button
+    private lateinit var drawButton: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        playerCard1 = findViewById(R.id.card1)
-        playerCard2 = findViewById(R.id.card2)
-        playerCard3 = findViewById(R.id.card3)
-        playerCard4 = findViewById(R.id.card4)
-        playerCard5 = findViewById(R.id.card5)
+        playerCardImageViews = mutableListOf()
+        playerCardImageViews.add(findViewById(R.id.card1))
+        playerCardImageViews.add(findViewById(R.id.card2))
+        playerCardImageViews.add(findViewById(R.id.card3))
+        playerCardImageViews.add(findViewById(R.id.card4))
+        playerCardImageViews.add(findViewById(R.id.card5))
+        dealButton = findViewById(R.id.deal_button)
+        drawButton = findViewById(R.id.draw_button)
+        drawButton.isEnabled = false
 
-        var playerCardImageArray : MutableList<ImageView> = mutableListOf<ImageView>()
-        playerCardImageArray.add(playerCard1)
-        playerCardImageArray.add(playerCard2)
-        playerCardImageArray.add(playerCard3)
-        playerCardImageArray.add(playerCard4)
-        playerCardImageArray.add(playerCard5)
+        for (i in 0..4) {
+            playerCardImageViews[i].setOnClickListener {
+                toggleCardSelection(i)
+            }
+        }
 
+        dealButton.setOnClickListener {
+            gameViewModel.deck.shuffleCards()
+            gameViewModel.player.hand.addCards(gameViewModel.deck.dealCards(5))
+            gameViewModel.dealer.hand.addCards(gameViewModel.deck.dealCards(5))
+            updateCardsViewDrawables()
+            drawButton.isEnabled = true
+            dealButton.isEnabled = false
+        }
 
+        drawButton.setOnClickListener {
+            //gameViewModel.deck.addCards(listOf(player.hand.returnCard(inputNumber - 1)))
+            val cardsToReturn : MutableList<Card> = mutableListOf()
+            var numberOfCardsToDraw : Int = 0
+            for (i in 0..4) {
+                if (gameViewModel.cardSelected[i]) {
+                    cardsToReturn.add(gameViewModel.player.hand.getCardAt(i))
+                    numberOfCardsToDraw++
+                }
+            }
+            gameViewModel.deck.addCards(gameViewModel.player.hand.returnCards(cardsToReturn))
+            cardsToReturn.clear()
+            // add all returned cards from all players to deck before shuffling and dealing!
+            // These must be separate steps!
+            gameViewModel.deck.shuffleCards()
+            gameViewModel.player.hand.addCardsAtBoolIndices(
+                    gameViewModel.deck.dealCards(numberOfCardsToDraw),
+                    gameViewModel.cardSelected
+                    )
+            updateCardsViewDrawables()
+
+        }
     }
 
+//    private fun selectDeselectCard(card: ConstraintLayout.LayoutParams, index: Int) {
+    private fun toggleCardSelection(index: Int) {
+        playerCardParams = playerCardImageViews[index].layoutParams as ConstraintLayout.LayoutParams
+        gameViewModel.cardSelected[index] = !gameViewModel.cardSelected[index]
+        if (gameViewModel.cardSelected[index]) {
+            playerCardParams.verticalBias = 0.8f
+        } else {
+            playerCardParams.verticalBias = 0.85f
+        }
+        playerCardImageViews[index].requestLayout()
+        Log.i(TAG, gameViewModel.player.hand.getCardAt(index).toString())
+    }
 
-
-    fun updateCardsUI(playerCardImageArray: MutableList<ImageView>) {
-        for (i in 0..4) {
-            val stringGenerated = gameViewModel.player.hand.getCardAt(i).getFilename()
-            val id = resources.getIdentifier("yourpackagename:drawable/$stringGenerated", null, null)
-            playerCardImageArray[i].setImageResource(id)
+    private fun updateCardsViewDrawables() {
+        for ((i, card) in gameViewModel.player.hand.getCards().withIndex()) {
+            // based on example from stackoverflow:
+            val filename = card.getFilename()
+            val id = resources.getIdentifier("com.team5.android.poker:drawable/$filename", null, null)
+            playerCardImageViews[i].setImageResource(id)
         }
     }
 
@@ -51,11 +101,7 @@ class MainActivity : AppCompatActivity() {
 
 
 //fun main(args: Array<String>) {
-//    val deck = Deck()
-//    val player = Player("Player")
-//    val dealer = Player("Dealer")
-//    var winner: Player?
-//    //deck.display() //DEBUG
+
 //    var gameOn: Boolean = true
 //    while (gameOn) {
 //        deck.shuffleCards()
