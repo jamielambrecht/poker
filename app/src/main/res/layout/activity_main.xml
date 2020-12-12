@@ -93,4 +93,14 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <TextView
+        android:id="@+id/player_hand_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="32dp"
+        android:text="Current Hand"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/draw_button"
+        app:layout_constraintStart_toEndOf="@+id/deal_button" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

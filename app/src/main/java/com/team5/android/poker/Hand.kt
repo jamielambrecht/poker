@@ -13,8 +13,12 @@ enum class HandRanks {
     Straight, Flush, FullHouse, FourOfAKind,
     StraightFlush, RoyalFlush;
 
-    companion object {
-        fun getByValue(value: Int) = values().firstOrNull { it.ordinal == value }
+    override fun toString() : String {
+        val strings = listOf<String>(
+                "High Card", "Pair", "Two Pair", "Three of A Kind", "Straight",
+                "Flush", "Full House", "Four Of A Kind", "Straight Flush", "Royal Flush"
+        )
+        return strings[this.ordinal]
     }
 }
 
@@ -69,8 +73,8 @@ class Hand(owner: String?) {
     8. Straight Flush, 9. Royal Flush
     NOTE: Straights start at Ace (??)
     */
-    fun setHandRanks() {
-        val cards = this.cards
+    fun setHandRanks() : HandRanks {
+        val cards = this.cards.toMutableList()
         cards.sortBy { it.rank }
         var howManyByRank = IntArray(14)
         var rankAtMatchLevel = IntArray(4)
@@ -100,7 +104,7 @@ class Hand(owner: String?) {
         }
         println()
 
-        handRank = HandRanks.getByValue(pairs)!!
+        handRank = HandRanks.values()[pairs]
         if (howManyByRank.maxOf {it.toInt()} == 3) { handRank = HandRanks.ThreeOfAKind }
 
         var straight : Boolean = true
@@ -146,7 +150,7 @@ class Hand(owner: String?) {
         if (handRank == HandRanks.StraightFlush) { tieBreakers[0] = rankAtMatchLevel[0] }
         if (handRank == HandRanks.RoyalFlush)   { tieBreakers[0] = rankAtMatchLevel[0] }
 
-        println(owner + "'s current hand is a " + handRank.name)
+        return handRank
     }
 
     fun isNotEmpty(): Boolean {

@@ -2,14 +2,15 @@ package com.team5.android.poker
 
 import android.os.Bundle
 import android.util.Log
-import android.view.View
 import android.widget.Button
 import android.widget.ImageView
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.lifecycle.ViewModelProvider
 
 private const val TAG = "MainActivity"
+private const val KEY_STATE = "GameState"
 
 class MainActivity : AppCompatActivity() {
 
@@ -21,6 +22,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var playerCardParams : ConstraintLayout.LayoutParams
     private lateinit var dealButton: Button
     private lateinit var drawButton: Button
+    private lateinit var playerHandText: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,7 +36,11 @@ class MainActivity : AppCompatActivity() {
         playerCardImageViews.add(findViewById(R.id.card5))
         dealButton = findViewById(R.id.deal_button)
         drawButton = findViewById(R.id.draw_button)
-        drawButton.isEnabled = false
+        playerHandText = findViewById(R.id.player_hand_text)
+        val currentStateAsInt = savedInstanceState?.getInt(KEY_STATE, 0) ?: 0
+        gameViewModel.gameState = States.values()[currentStateAsInt]
+        updateButtons()
+
 
         for (i in 0..4) {
             playerCardImageViews[i].setOnClickListener {
@@ -47,8 +53,8 @@ class MainActivity : AppCompatActivity() {
             gameViewModel.player.hand.addCards(gameViewModel.deck.dealCards(5))
             gameViewModel.dealer.hand.addCards(gameViewModel.deck.dealCards(5))
             updateCardsViewDrawables()
-            drawButton.isEnabled = true
-            dealButton.isEnabled = false
+            gameViewModel.gameState = States.FIRSTHAND
+            updateButtons()
         }
 
         drawButton.setOnClickListener {
@@ -71,8 +77,26 @@ class MainActivity : AppCompatActivity() {
                     gameViewModel.cardSelected
                     )
             updateCardsViewDrawables()
+            updateButtons()
 
         }
+    }
+
+    private fun updateButtons() {
+        if (gameViewModel.gameState == States.BEGIN) {
+            drawButton.isEnabled = false
+        }
+        if (gameViewModel.gameState == States.FIRSTHAND) {
+            drawButton.isEnabled = true
+            dealButton.isEnabled = false
+            playerHandText.text = gameViewModel.player.hand.setHandRanks().toString()
+
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putInt(KEY_STATE, gameViewModel.gameState.ordinal)
     }
 
 //    private fun selectDeselectCard(card: ConstraintLayout.LayoutParams, index: Int) {

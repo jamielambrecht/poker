@@ -2,11 +2,22 @@ package com.team5.android.poker
 
 import androidx.lifecycle.ViewModel
 
+enum class States {
+    BEGIN, FIRSTHAND, SECONDHAND
+}
+
 class GameViewModel : ViewModel() {
 
-    val deck = Deck()
+    private val theDeck = Deck()
     val player = Player("Player")
     val dealer = Player("Dealer")
     //var winner: Player?
-    val cardSelected = BooleanArray(5)
+    private val cardsSelected = BooleanArray(5)
+    var gameState: States = States.BEGIN
+
+    val cardSelected: BooleanArray
+        get() = cardsSelected
+
+    val deck: Deck
+        get() = theDeck
 }
