@@ -126,7 +126,7 @@ class Hand(owner: String?) {
             if (handRank == HandRanks.Straight) {
                 handRank = HandRanks.StraightFlush
             } else {
-                handRank == HandRanks.Flush
+                handRank = HandRanks.Flush
             }
         }
         if (handRank == HandRanks.ThreeOfAKind && pairs > 0) {

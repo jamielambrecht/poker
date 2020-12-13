@@ -19,10 +19,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private lateinit var playerCardImageViews : MutableList<ImageView>
+    private lateinit var dealerCardImageViews : MutableList<ImageView>
     private lateinit var playerCardParams : ConstraintLayout.LayoutParams
     private lateinit var dealButton: Button
     private lateinit var drawButton: Button
     private lateinit var playerHandText: TextView
+    private lateinit var dealerHandText: TextView
+    private lateinit var dealerMoveText: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,6 +37,19 @@ class MainActivity : AppCompatActivity() {
         playerCardImageViews.add(findViewById(R.id.card3))
         playerCardImageViews.add(findViewById(R.id.card4))
         playerCardImageViews.add(findViewById(R.id.card5))
+
+        dealerCardImageViews = mutableListOf()
+        dealerCardImageViews.add(findViewById(R.id.d_card1))
+        dealerCardImageViews.add(findViewById(R.id.d_card2))
+        dealerCardImageViews.add(findViewById(R.id.d_card3))
+        dealerCardImageViews.add(findViewById(R.id.d_card4))
+        dealerCardImageViews.add(findViewById(R.id.d_card5))
+        dealerHandText = findViewById(R.id.dealer_hand_text)
+        dealerMoveText = findViewById(R.id.dealer_move)
+
+        updateCardsViewDrawables()
+        updateDealerCardsViewDrawables()
+
         dealButton = findViewById(R.id.deal_button)
         drawButton = findViewById(R.id.draw_button)
         playerHandText = findViewById(R.id.player_hand_text)
@@ -53,12 +69,12 @@ class MainActivity : AppCompatActivity() {
             gameViewModel.player.hand.addCards(gameViewModel.deck.dealCards(5))
             gameViewModel.dealer.hand.addCards(gameViewModel.deck.dealCards(5))
             updateCardsViewDrawables()
+            updateDealerCardsViewDrawables()
             gameViewModel.gameState = States.FIRSTHAND
             updateButtons()
         }
 
         drawButton.setOnClickListener {
-            //gameViewModel.deck.addCards(listOf(player.hand.returnCard(inputNumber - 1)))
             val cardsToReturn : MutableList<Card> = mutableListOf()
             var numberOfCardsToDraw : Int = 0
             for (i in 0..4) {
@@ -118,6 +134,15 @@ class MainActivity : AppCompatActivity() {
             val filename = card.getFilename()
             val id = resources.getIdentifier("com.team5.android.poker:drawable/$filename", null, null)
             playerCardImageViews[i].setImageResource(id)
+        }
+    }
+
+    private fun updateDealerCardsViewDrawables() {
+        for ((i, card) in gameViewModel.dealer.hand.getCards().withIndex()) {
+            // based on example from stackoverflow:
+            val filename = card.getFilename()
+            val id = resources.getIdentifier("com.team5.android.poker:drawable/$filename", null, null)
+            dealerCardImageViews[i].setImageResource(id)
         }
     }
 
