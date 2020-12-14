@@ -26,6 +26,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var playerHandText: TextView
     private lateinit var dealerHandText: TextView
     private lateinit var dealerMoveText: TextView
+    private lateinit var winnerTextView: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,9 +47,11 @@ class MainActivity : AppCompatActivity() {
         dealerCardImageViews.add(findViewById(R.id.d_card5))
         dealerHandText = findViewById(R.id.dealer_hand_text)
         dealerMoveText = findViewById(R.id.dealer_move)
+        winnerTextView = findViewById(R.id.winner_text)
 
         updateCardsViewDrawables()
         updateDealerCardsViewDrawables()
+        updateWinnerText()
 
         dealButton = findViewById(R.id.deal_button)
         drawButton = findViewById(R.id.draw_button)
@@ -57,7 +60,6 @@ class MainActivity : AppCompatActivity() {
         gameViewModel.gameState = States.values()[currentStateAsInt]
         updateButtons()
 
-
         for (i in 0..4) {
             playerCardImageViews[i].setOnClickListener {
                 toggleCardSelection(i)
@@ -65,13 +67,18 @@ class MainActivity : AppCompatActivity() {
         }
 
         dealButton.setOnClickListener {
+            //  Shuffle the Deck
             gameViewModel.deck.shuffleCards()
+            //  Deal 5 Cards to each Player's Hand
             gameViewModel.player.hand.addCards(gameViewModel.deck.dealCards(5))
             gameViewModel.dealer.hand.addCards(gameViewModel.deck.dealCards(5))
+            //  Set the Game State to the next step
+            gameViewModel.gameState = States.FIRSTHAND
+            //  Update the UI accordingly
             updateCardsViewDrawables()
             updateDealerCardsViewDrawables()
-            gameViewModel.gameState = States.FIRSTHAND
             updateButtons()
+            updateWinnerText()
         }
 
         drawButton.setOnClickListener {
@@ -92,8 +99,45 @@ class MainActivity : AppCompatActivity() {
                     gameViewModel.deck.dealCards(numberOfCardsToDraw),
                     gameViewModel.cardSelected
                     )
+
+            gameViewModel.player.hand.setHandRanks()
+            gameViewModel.dealer.hand.setHandRanks()
+
+            gameViewModel.tieGame = false
+            if (gameViewModel.player.hand.getPrimaryHandRank() == gameViewModel.dealer.hand.getPrimaryHandRank()) {
+                if (gameViewModel.player.hand.getSecondaryHandRank() == gameViewModel.dealer.hand.getSecondaryHandRank()) {
+                    if (gameViewModel.player.hand.getTieBreaker() == gameViewModel.dealer.hand.getTieBreaker()) {
+                        gameViewModel.tieGame = true
+                    } else {
+                        if (gameViewModel.player.hand.getTieBreaker() > gameViewModel.dealer.hand.getTieBreaker()) {
+                            gameViewModel.winner = gameViewModel.player
+                        } else {
+                            gameViewModel.winner = gameViewModel.dealer
+                        }
+                    }
+                } else {
+                    if (gameViewModel.player.hand.getSecondaryHandRank() > gameViewModel.dealer.hand.getSecondaryHandRank()) {
+                        gameViewModel.winner = gameViewModel.player
+                    } else {
+                        gameViewModel.winner = gameViewModel.dealer
+                    }
+                }
+            } else {
+                if (gameViewModel.player.hand.getPrimaryHandRank() > gameViewModel.dealer.hand.getPrimaryHandRank()) {
+                    gameViewModel.winner = gameViewModel.player
+                } else {
+                    gameViewModel.winner = gameViewModel.dealer
+                }
+            }
+
+            gameViewModel.gameState = States.SECONDHAND
+            resetCardSelections()
             updateCardsViewDrawables()
+            updateDealerCardsViewDrawables()
+            updateWinnerText()
             updateButtons()
+            gameViewModel.deck.addCards(gameViewModel.player.hand.returnAllCards())
+            gameViewModel.deck.addCards(gameViewModel.dealer.hand.returnAllCards())
 
         }
     }
@@ -106,8 +150,25 @@ class MainActivity : AppCompatActivity() {
             drawButton.isEnabled = true
             dealButton.isEnabled = false
             playerHandText.text = gameViewModel.player.hand.setHandRanks().toString()
-
         }
+        if (gameViewModel.gameState == States.SECONDHAND) {
+            drawButton.isEnabled = false
+            dealButton.isEnabled = true
+        }
+
+    }
+
+    private fun updateWinnerText() {
+        if (gameViewModel.gameState == States.SECONDHAND) {
+            if (gameViewModel.tieGame == true) {
+                winnerTextView.setText("Tie game!")
+            } else {
+                winnerTextView.setText("The winner is " + gameViewModel.winner.name)
+            }
+        } else {
+            winnerTextView.setText("")
+        }
+
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -117,15 +178,25 @@ class MainActivity : AppCompatActivity() {
 
 //    private fun selectDeselectCard(card: ConstraintLayout.LayoutParams, index: Int) {
     private fun toggleCardSelection(index: Int) {
-        playerCardParams = playerCardImageViews[index].layoutParams as ConstraintLayout.LayoutParams
         gameViewModel.cardSelected[index] = !gameViewModel.cardSelected[index]
+        updateSelectedCardImageViewVerticalBias(index)
+    }
+
+    private fun resetCardSelections() {
+        for (index in 0..4) {
+            gameViewModel.cardSelected[index] = false
+            updateSelectedCardImageViewVerticalBias(index)
+        }
+    }
+
+    private fun updateSelectedCardImageViewVerticalBias(index: Int) {
+        playerCardParams = playerCardImageViews[index].layoutParams as ConstraintLayout.LayoutParams
         if (gameViewModel.cardSelected[index]) {
             playerCardParams.verticalBias = 0.8f
         } else {
             playerCardParams.verticalBias = 0.85f
         }
         playerCardImageViews[index].requestLayout()
-        Log.i(TAG, gameViewModel.player.hand.getCardAt(index).toString())
     }
 
     private fun updateCardsViewDrawables() {
@@ -135,84 +206,23 @@ class MainActivity : AppCompatActivity() {
             val id = resources.getIdentifier("com.team5.android.poker:drawable/$filename", null, null)
             playerCardImageViews[i].setImageResource(id)
         }
+
     }
 
     private fun updateDealerCardsViewDrawables() {
-        for ((i, card) in gameViewModel.dealer.hand.getCards().withIndex()) {
-            // based on example from stackoverflow:
-            val filename = card.getFilename()
-            val id = resources.getIdentifier("com.team5.android.poker:drawable/$filename", null, null)
-            dealerCardImageViews[i].setImageResource(id)
+
+        if (gameViewModel.gameState == States.FIRSTHAND) {
+            for ((i, card) in gameViewModel.dealer.hand.getCards().withIndex()) {
+                dealerCardImageViews[i].setImageResource(R.drawable.back_of_card)
+            }
+        } else if (gameViewModel.gameState == States.SECONDHAND) {
+            for ((i, card) in gameViewModel.dealer.hand.getCards().withIndex()) {
+                // based on example from stackoverflow:
+                val filename = card.getFilename()
+                val id = resources.getIdentifier("com.team5.android.poker:drawable/$filename", null, null)
+                dealerCardImageViews[i].setImageResource(id)
+            }
         }
     }
 
 }
-
-
-//fun main(args: Array<String>) {
-
-//    var gameOn: Boolean = true
-//    while (gameOn) {
-//        deck.shuffleCards()
-//        player.hand.addCards(deck.dealCards(5))
-//        dealer.hand.addCards(deck.dealCards(5))
-//        player.displayHand()
-//        player.hand.setHandRanks()
-//
-//        println("Enter card index (1-5) to return to dealer (0 when finished)")
-//        var inputNumber: Number = -1
-//        var cardsReturned: Int = 0
-//        while (inputNumber != 0 && player.hand.isNotEmpty()) {
-//            inputNumber = Integer.valueOf(readLine())
-//            if (inputNumber < player.hand.size() + 1 && inputNumber > 0) {
-//                deck.addCards(listOf(player.hand.returnCard(inputNumber - 1)))
-//                ++cardsReturned
-//            }
-//            player.displayHand()
-//        }
-//        if (cardsReturned > 0) {
-//            player.hand.addCards(deck.dealCards(cardsReturned))
-//        }
-//        player.displayHand()
-//        player.hand.setHandRanks()
-//        dealer.hand.setHandRanks()
-//
-//        if (player.hand.getPrimaryHandRank() == dealer.hand.getPrimaryHandRank()) {
-//            if (player.hand.getSecondaryHandRank() == dealer.hand.getSecondaryHandRank()) {
-//                winner = if (player.hand.getTieBreaker() == dealer.hand.getTieBreaker()) {
-//                    null
-//                } else {
-//                    if (player.hand.getTieBreaker() > dealer.hand.getTieBreaker()) {
-//                        player
-//                    } else {
-//                        dealer
-//                    }
-//                }
-//            } else {
-//                winner = if (player.hand.getSecondaryHandRank() > dealer.hand.getSecondaryHandRank()) {
-//                    player
-//                } else {
-//                    dealer
-//                }
-//            }
-//        } else {
-//            winner = if (player.hand.getPrimaryHandRank() > dealer.hand.getPrimaryHandRank()) {
-//                player
-//            } else {
-//                dealer
-//            }
-//        }
-//
-//        if (winner == null) {
-//            println("Tie game!")
-//        } else {
-//            println("The winner is " + winner.name)
-//        }
-//        deck.addCards(player.hand.returnAllCards())
-//        deck.addCards(dealer.hand.returnAllCards())
-//        println("Continue playing? Y/n")
-//        if (readLine()!!.toLowerCase() == "n") {
-//            gameOn = false
-//        }
-//    }
-//}

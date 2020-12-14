@@ -11,7 +11,8 @@ class GameViewModel : ViewModel() {
     private val theDeck = Deck()
     val player = Player("Player")
     val dealer = Player("Dealer")
-    //var winner: Player?
+    lateinit var winner: Player
+    var tieGame: Boolean = false
     private val cardsSelected = BooleanArray(5)
     var gameState: States = States.BEGIN
 
