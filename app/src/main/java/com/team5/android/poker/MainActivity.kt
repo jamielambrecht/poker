@@ -11,6 +11,9 @@ import androidx.lifecycle.ViewModelProvider
 
 private const val TAG = "MainActivity"
 private const val KEY_STATE = "GameState"
+private const val KEY_PLAYER = "Player"
+private const val KEY_DEALER = "Dealer"
+private const val KEY_DECK = "Deck"
 
 class MainActivity : AppCompatActivity() {
 
@@ -49,15 +52,23 @@ class MainActivity : AppCompatActivity() {
         dealerMoveText = findViewById(R.id.dealer_move)
         winnerTextView = findViewById(R.id.winner_text)
 
-        updateCardsViewDrawables()
-        updateDealerCardsViewDrawables()
-        updateWinnerText()
-
         dealButton = findViewById(R.id.deal_button)
         drawButton = findViewById(R.id.draw_button)
         playerHandText = findViewById(R.id.player_hand_text)
-        val currentStateAsInt = savedInstanceState?.getInt(KEY_STATE, 0) ?: 0
-        gameViewModel.gameState = States.values()[currentStateAsInt]
+
+        // We tried to use saveInstanceState but we had trouble structuring our implementation of
+        // Parcelable for custom Object classes, though we did learn a bit about how it works.
+
+//        gameViewModel.deck = savedInstanceState?.getParcelable(KEY_DECK) ?: gameViewModel.deck
+//        gameViewModel.player = savedInstanceState?.getParcelable(KEY_DECK) ?: gameViewModel.player
+//        gameViewModel.dealer = savedInstanceState?.getParcelable(KEY_DEALER) ?: gameViewModel.dealer
+
+//        val currentStateAsInt = savedInstanceState?.getInt(KEY_STATE, 0) ?: 0
+//        gameViewModel.gameState = States.values()[currentStateAsInt]
+
+        updateCardsViewDrawables()
+        updateDealerCardsViewDrawables()
+        updateWinnerText()
         updateButtons()
 
         for (i in 0..4) {
@@ -83,52 +94,29 @@ class MainActivity : AppCompatActivity() {
 
         drawButton.setOnClickListener {
             val cardsToReturn : MutableList<Card> = mutableListOf()
-            var numberOfCardsToDraw : Int = 0
+//            var numberOfCardsToDraw : Int = 0
             for (i in 0..4) {
                 if (gameViewModel.cardSelected[i]) {
                     cardsToReturn.add(gameViewModel.player.hand.getCardAt(i))
-                    numberOfCardsToDraw++
+//                    numberOfCardsToDraw++
                 }
             }
-            gameViewModel.deck.addCards(gameViewModel.player.hand.returnCards(cardsToReturn))
-            cardsToReturn.clear()
             // add all returned cards from all players to deck before shuffling and dealing!
+            gameViewModel.deck.addCards(gameViewModel.player.hand.returnCards(cardsToReturn))
+
             // These must be separate steps!
             gameViewModel.deck.shuffleCards()
             gameViewModel.player.hand.addCardsAtBoolIndices(
-                    gameViewModel.deck.dealCards(numberOfCardsToDraw),
+                    gameViewModel.deck.dealCards(cardsToReturn.size),
                     gameViewModel.cardSelected
-                    )
+            )
+
+            cardsToReturn.clear()
 
             gameViewModel.player.hand.setHandRanks()
             gameViewModel.dealer.hand.setHandRanks()
 
-            gameViewModel.tieGame = false
-            if (gameViewModel.player.hand.getPrimaryHandRank() == gameViewModel.dealer.hand.getPrimaryHandRank()) {
-                if (gameViewModel.player.hand.getSecondaryHandRank() == gameViewModel.dealer.hand.getSecondaryHandRank()) {
-                    if (gameViewModel.player.hand.getTieBreaker() == gameViewModel.dealer.hand.getTieBreaker()) {
-                        gameViewModel.tieGame = true
-                    } else {
-                        if (gameViewModel.player.hand.getTieBreaker() > gameViewModel.dealer.hand.getTieBreaker()) {
-                            gameViewModel.winner = gameViewModel.player
-                        } else {
-                            gameViewModel.winner = gameViewModel.dealer
-                        }
-                    }
-                } else {
-                    if (gameViewModel.player.hand.getSecondaryHandRank() > gameViewModel.dealer.hand.getSecondaryHandRank()) {
-                        gameViewModel.winner = gameViewModel.player
-                    } else {
-                        gameViewModel.winner = gameViewModel.dealer
-                    }
-                }
-            } else {
-                if (gameViewModel.player.hand.getPrimaryHandRank() > gameViewModel.dealer.hand.getPrimaryHandRank()) {
-                    gameViewModel.winner = gameViewModel.player
-                } else {
-                    gameViewModel.winner = gameViewModel.dealer
-                }
-            }
+            determineWinner()
 
             gameViewModel.gameState = States.SECONDHAND
             resetCardSelections()
@@ -142,18 +130,59 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun determineWinner() {
+        gameViewModel.tieGame = false
+        if (gameViewModel.player.hand.getHandRankAtLevel(0) == gameViewModel.dealer.hand.getHandRankAtLevel(0)) {
+            if (gameViewModel.player.hand.getHandRankAtLevel(1) == gameViewModel.dealer.hand.getHandRankAtLevel(1)) {
+                if (gameViewModel.player.hand.getHandRankAtLevel(2) == gameViewModel.dealer.hand.getHandRankAtLevel(2)) {
+                    if (gameViewModel.player.hand.getHandRankAtLevel(3) == gameViewModel.dealer.hand.getHandRankAtLevel(3)) {
+                        gameViewModel.tieGame = true
+                    } else {
+                        if (gameViewModel.player.hand.getHandRankAtLevel(3) > gameViewModel.dealer.hand.getHandRankAtLevel(3)) {
+                            gameViewModel.winner = gameViewModel.player
+                        } else {
+                            gameViewModel.winner = gameViewModel.dealer
+                        }
+                    }
+                } else {
+                    if (gameViewModel.player.hand.getHandRankAtLevel(2) > gameViewModel.dealer.hand.getHandRankAtLevel(2)) {
+                        gameViewModel.winner = gameViewModel.player
+                    } else {
+                        gameViewModel.winner = gameViewModel.dealer
+                    }
+                }
+            } else {
+                if (gameViewModel.player.hand.getHandRankAtLevel(1) > gameViewModel.dealer.hand.getHandRankAtLevel(1)) {
+                    gameViewModel.winner = gameViewModel.player
+                } else {
+                    gameViewModel.winner = gameViewModel.dealer
+                }
+            }
+        } else {
+            if (gameViewModel.player.hand.getHandRankAtLevel(0) > gameViewModel.dealer.hand.getHandRankAtLevel(0)) {
+                gameViewModel.winner = gameViewModel.player
+            } else {
+                gameViewModel.winner = gameViewModel.dealer
+            }
+        }
+    }
+
     private fun updateButtons() {
         if (gameViewModel.gameState == States.BEGIN) {
             drawButton.isEnabled = false
+            dealerHandText.text = resources.getText(R.string.dealer_hand_default_text)
         }
         if (gameViewModel.gameState == States.FIRSTHAND) {
             drawButton.isEnabled = true
             dealButton.isEnabled = false
+            dealerHandText.text = resources.getText(R.string.dealer_hand_default_text)
             playerHandText.text = gameViewModel.player.hand.setHandRanks().toString()
         }
         if (gameViewModel.gameState == States.SECONDHAND) {
             drawButton.isEnabled = false
             dealButton.isEnabled = true
+            playerHandText.text = gameViewModel.player.hand.setHandRanks().toString()
+            dealerHandText.text = gameViewModel.dealer.hand.setHandRanks().toString()
         }
 
     }
@@ -161,9 +190,9 @@ class MainActivity : AppCompatActivity() {
     private fun updateWinnerText() {
         if (gameViewModel.gameState == States.SECONDHAND) {
             if (gameViewModel.tieGame == true) {
-                winnerTextView.setText("Tie game!")
+                winnerTextView.setText(resources.getText(R.string.tie_game))
             } else {
-                winnerTextView.setText("The winner is " + gameViewModel.winner.name)
+                winnerTextView.setText(resources.getText(R.string.the_winner_is).toString() + gameViewModel.winner.name)
             }
         } else {
             winnerTextView.setText("")
@@ -174,9 +203,12 @@ class MainActivity : AppCompatActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putInt(KEY_STATE, gameViewModel.gameState.ordinal)
+//        outState.putParcelable(KEY_PLAYER, gameViewModel.player)
+//        outState.putParcelable(KEY_DEALER, gameViewModel.dealer)
+//        outState.putParcelable(KEY_DECK, gameViewModel.deck)
     }
 
-//    private fun selectDeselectCard(card: ConstraintLayout.LayoutParams, index: Int) {
+    //    private fun selectDeselectCard(card: ConstraintLayout.LayoutParams, index: Int) {
     private fun toggleCardSelection(index: Int) {
         gameViewModel.cardSelected[index] = !gameViewModel.cardSelected[index]
         updateSelectedCardImageViewVerticalBias(index)

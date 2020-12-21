@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">Poker</string>
+    <string name="dealer_hand_default_text">Dealer\'s Hand</string>
+    <string name="tie_game">Tie game!</string>
+    <string name="the_winner_is">The winner is \</string>
 </resources>

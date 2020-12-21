@@ -20,9 +20,6 @@ enum class Filenames {
     six_of_spades, seven_of_spades, eight_of_spades, nine_of_spades, ten_of_spades, jack_of_spades,
     queen_of_spades, king_of_spades, ace_of_spades;
 
-    companion object {
-        fun getByValue(value: Int) = Numbers.values().firstOrNull { it.ordinal == value }
-    }
 }
 
 data class Card(val suit: Suit, val rank: Int) {

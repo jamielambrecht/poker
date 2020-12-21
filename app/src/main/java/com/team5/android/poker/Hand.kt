@@ -1,11 +1,7 @@
 package com.team5.android.poker
 
 enum class Numbers {
-    zero, one, two, three, four;
-
-    companion object {
-        fun getByValue(value: Int) = values().firstOrNull { it.ordinal == value }
-    }
+    zero, one, two, three, four
 }
 
 enum class HandRanks {
@@ -25,7 +21,7 @@ enum class HandRanks {
 class Hand(owner: String?) {
     private val cards: MutableList<Card> = mutableListOf<Card>()
     private var handRank = HandRanks.HighestCard
-    private var tieBreakers = IntArray(2)
+    private var tieBreakers = IntArray(3)
     private val owner = owner
 
     fun addCards(cards: List<Card>) {
@@ -81,28 +77,26 @@ class Hand(owner: String?) {
         var firstPairRank: Int = 0
         var pairs: Int = 0
         handRank = HandRanks.HighestCard
-
-        // Set highest card
-        rankAtMatchLevel[0] = cards.maxOf { it.rank }
-        println("Highest card: " + Card.rankToString(rankAtMatchLevel[0]))
+        val singleCardsRanks = mutableListOf<Int>()
 
         // Count number of each card rank to find pairs etc.
-        print("$owner has ")
         for (rank in 1..13) {
             for (card in cards) {
                 howManyByRank[rank] += if (rank == card.rank) 1 else 0
                 // Count Pairs
+            }
+            if (howManyByRank[rank] == 1) {
+                // Save rank of single cards to determine highest card outside of pairs
+                singleCardsRanks.add(rank)
             }
             if (howManyByRank[rank] == 2) {
                 rankAtMatchLevel[HandRanks.Pair.ordinal] = rank
                 if (pairs == 0) {firstPairRank = rank}
                 ++pairs
             }
-            if (howManyByRank[rank] > 0) {
-                print( Numbers.getByValue(howManyByRank[rank])!!.name + " " + Card.rankToString(rank) + ", " )
-            }
         }
-        println()
+
+        rankAtMatchLevel[0] = singleCardsRanks.maxOf { it }
 
         handRank = HandRanks.values()[pairs]
         if (howManyByRank.maxOf {it.toInt()} == 3) { handRank = HandRanks.ThreeOfAKind }
@@ -139,16 +133,66 @@ class Hand(owner: String?) {
         }
 
         //  Set tie-breakers
-        if (handRank == HandRanks.HighestCard)  { tieBreakers[0] = rankAtMatchLevel[0] }
-        if (handRank == HandRanks.Pair)         { tieBreakers[0] = rankAtMatchLevel[1]; tieBreakers[1] = rankAtMatchLevel[0] }
-        if (handRank == HandRanks.TwoPair)      { tieBreakers[0] = rankAtMatchLevel[1]; tieBreakers[1] = firstPairRank }
-        if (handRank == HandRanks.ThreeOfAKind) { tieBreakers[0] = rankAtMatchLevel[0] }
-        if (handRank == HandRanks.Straight)     { tieBreakers[0] = rankAtMatchLevel[0] }
-        if (handRank == HandRanks.Flush)        { tieBreakers[0] = rankAtMatchLevel[0] }
-        if (handRank == HandRanks.FullHouse)    { tieBreakers[0] = rankAtMatchLevel[2]; tieBreakers[1] = rankAtMatchLevel[1] }
-        if (handRank == HandRanks.FourOfAKind)    { tieBreakers[0] = rankAtMatchLevel[0] }
-        if (handRank == HandRanks.StraightFlush) { tieBreakers[0] = rankAtMatchLevel[0] }
-        if (handRank == HandRanks.RoyalFlush)   { tieBreakers[0] = rankAtMatchLevel[0] }
+        if (handRank == HandRanks.HighestCard)  {
+            tieBreakers[0] = rankAtMatchLevel[0]
+            singleCardsRanks.remove( singleCardsRanks.maxOf {it} )
+            tieBreakers[1] = singleCardsRanks.maxOf {it}
+            singleCardsRanks.remove( singleCardsRanks.maxOf {it} )
+            tieBreakers[2] = singleCardsRanks.maxOf {it}}
+
+        if (handRank == HandRanks.Pair)         {
+            tieBreakers[0] = rankAtMatchLevel[1]
+            tieBreakers[1] = rankAtMatchLevel[0]
+            singleCardsRanks.remove( singleCardsRanks.maxOf {it} )
+            tieBreakers[2] = singleCardsRanks.maxOf {it}}
+
+        if (handRank == HandRanks.TwoPair)      {
+            tieBreakers[0] = rankAtMatchLevel[1]
+            tieBreakers[1] = firstPairRank
+            tieBreakers[2] = rankAtMatchLevel[0] }
+
+        if (handRank == HandRanks.ThreeOfAKind) {
+            tieBreakers[0] = rankAtMatchLevel[2]
+            tieBreakers[1] = rankAtMatchLevel[0]
+            singleCardsRanks.remove( singleCardsRanks.maxOf {it} )
+            tieBreakers[2] = singleCardsRanks.maxOf {it}
+        }
+
+        if (handRank == HandRanks.Straight)     {
+            tieBreakers[0] = rankAtMatchLevel[0]
+            tieBreakers[1] = cards[4].suit.ordinal
+            tieBreakers[2] = cards[3].suit.ordinal
+        }
+
+        if (handRank == HandRanks.Flush)        {
+            tieBreakers[0] = rankAtMatchLevel[0]
+            tieBreakers[1] = cards.first().suit.ordinal
+            singleCardsRanks.remove( singleCardsRanks.maxOf {it} )
+            tieBreakers[2] = singleCardsRanks.maxOf {it}
+        }
+
+        if (handRank == HandRanks.FullHouse)    {
+            tieBreakers[0] = rankAtMatchLevel[2]
+            tieBreakers[1] = rankAtMatchLevel[1]
+            tieBreakers[2] = cards[4].suit.ordinal
+        }
+
+        if (handRank == HandRanks.FourOfAKind)    {
+            tieBreakers[0] = rankAtMatchLevel[3]
+            tieBreakers[1] = rankAtMatchLevel[0]
+            tieBreakers[2] = cards[4].suit.ordinal
+        }
+
+        if (handRank == HandRanks.StraightFlush) {
+            tieBreakers[0] = rankAtMatchLevel[0]
+            tieBreakers[1] = cards.first().suit.ordinal
+            tieBreakers[2] = 0
+        }
+        if (handRank == HandRanks.RoyalFlush)   {
+            tieBreakers[0] = cards.first().suit.ordinal
+            tieBreakers[1] = 0
+            tieBreakers[2] = 0
+        }
 
         return handRank
     }
@@ -165,16 +209,13 @@ class Hand(owner: String?) {
         cards.sortBy { it.rank }
     }
 
-    fun getPrimaryHandRank(): Int {
-        return handRank.ordinal
-    }
-
-    fun getSecondaryHandRank(): Int {
-        return tieBreakers[0]
-    }
-
-    fun getTieBreaker(): Int {
-        return tieBreakers[1]
+    fun getHandRankAtLevel(level : Int): Int {
+        when (level) {
+            0 -> return handRank.ordinal
+            1 -> return tieBreakers[0]
+            2 -> return tieBreakers[1]
+        }
+        return -1
     }
 
     fun getCards(): MutableList<Card> {
